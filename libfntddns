@@ -1,0 +1,177 @@
+#!/bin/sh
+
+NR_keys=0
+
+hostname="cns.api.qcloud.com"
+hostpath="/v2/index.php?"
+
+#
+# href: https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command
+# href: https://gist.github.com/cdown/1163649
+#
+# @参数1: 准备进行 URI 编码的字符串
+#
+# 返回值: 编码完成的字符串
+#
+urlencode() {
+    local old_lc_collate=$LC_COLLATE
+
+    LC_COLLATE=C
+    
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            *) printf "$c" | xxd -u -p -c1 | while read x;do printf "%%%s" "$x";done
+        esac
+    done
+
+    LC_COLLATE=$old_lc_collate
+}
+
+#
+# @参数1: Key
+# @参数2: Value
+#
+set_param()
+{
+  eval shrt_key_$NR_keys=$1
+  eval shrt_val_$1=$2
+  NR_keys=$((++NR_keys))
+}
+
+#
+#
+#  href: https://cloud.tencent.com/document/product/215/1693
+#
+#  对参数进行排序并安装腾讯云文档要求进行相应的签名处理
+#
+#  返回值: 签名后的字符串
+#
+calc_signature()
+{
+  # 对 key 进行排序放入 sorted_keys 数组
+  local sorted_keys=$(
+    i=0
+    while [ $i -lt $NR_keys ]
+    do
+      eval key=\$shrt_key_$i
+      echo $key
+      i=$((++i))
+    done | LC_COLLATE=C sort
+  )
+
+  # 组装签名字符串
+  local src_string="GET$hostname$hostpath"
+
+  for key in $sorted_keys
+  do
+      eval val="\$shrt_val_$key"
+      src_string="$src_string$key=$val&"
+  done
+
+  # 删除行尾的 &
+  src_string=$(echo $src_string | sed 's/&$//g')
+
+  # 根据 签名方式 进行 SHA1 和 SHA256
+  case $shrt_val_SignatureMethod in
+    HmacSHA256)
+      echo -n $src_string | openssl dgst -binary -sha256 -hmac $SecretKey | openssl enc | base64
+	;;
+    *)
+      echo -n $src_string | openssl dgst -binary -sha1   -hmac $SecretKey | openssl enc | base64
+	;;
+  esac
+}
+
+#
+#  构建最终 curl 命令使用的请求 URL 字符串
+#
+build_final_url()
+{
+  local i=0
+  local url_string="https://$hostname$hostpath"
+
+  while [ $i -lt $NR_keys ]
+  do
+    eval key=\$shrt_key_$i
+    eval val=\$shrt_val_$key
+
+    key_enc=$(urlencode $key)
+    val_enc=$(urlencode $val)
+#    key_enc=`echo -n $key | perl -MURI::Escape -le 'print uri_escape <STDIN>'`
+#    val_enc=`echo -n $val | perl -MURI::Escape -le 'print uri_escape <STDIN>'`
+
+    url_string="$url_string$key_enc=$val_enc&"
+    i=$((++i))
+  done
+
+  # 删除行尾的 &
+  url_string=$(echo $url_string | sed 's/&$//g')
+
+  echo $url_string
+}
+
+#
+#  设置公共参数
+#
+set_pub_param()
+{
+  set_param "Nonce" $RANDOM
+  set_param "SecretId" $SecretId
+  set_param "SignatureMethod" "HmacSHA256"
+  set_param "Timestamp" `date +%s`
+}
+
+#
+#  获取解析记录列表 ( RecordList ) 
+#
+#  参数1: domain
+#
+#  注意1: 需要 export SecretKey & SecretId 变量
+#
+#  返回v:  最终可以被用于 curl 或者 wget 发送 GET 请求的字符串
+#
+RecordList()
+{
+  set_pub_param
+
+  set_param "Action" "RecordList"
+  set_param "domain" $1
+
+  set_param "Signature" $(calc_signature)
+
+  build_final_url
+}
+
+#
+#  修改解析记录 ( RecordModify )
+#
+#  参数1: domain
+#  参数2: recordId
+#  参数3: subDomain
+#  参数4: recordType
+#  参数5: recordLine
+#  参数6: value
+#
+#  注意1: 需要 export SecretKey & SecretId 变量
+#
+#  返回v:  最终可以被用于 curl 或者 wget 发送 GET 请求的字符串
+#
+RecordModify()
+{
+  set_pub_param
+
+  set_param "Action" "RecordModify"
+  set_param "domain"     $1
+  set_param "recordId"   $2
+  set_param "subDomain"  $3
+  set_param "recordType" $4
+  set_param "recordLine" $5
+  set_param "value"      $6
+
+  set_param "Signature" $(calc_signature)
+
+  build_final_url
+}
