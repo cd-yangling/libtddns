@@ -175,3 +175,28 @@ RecordModify()
 
   build_final_url
 }
+
+#
+#  设置解析记录状态 ( RecordStatus )
+#
+#  参数1: domain
+#  参数2: recordId
+#  参数3: status
+#
+#  注意1: 需要 export SecretKey & SecretId 变量
+#
+#  返回v:  最终可以被用于 curl 或者 wget 发送 GET 请求的字符串
+#
+RecordStatus()
+{
+  set_pub_param
+
+  set_param "Action"   "RecordStatus"
+  set_param "domain"   $1
+  set_param "recordId" $2
+  set_param "status"   $3
+
+  set_param "Signature" $(calc_signature)
+
+  build_final_url
+}
