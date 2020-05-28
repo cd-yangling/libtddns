@@ -43,3 +43,15 @@ export SecretKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 export SecretId=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 curl -fsS $(RecordStatus qcloud.com id enable)
 ```
+
+### 添加解析记录
+
+参考文档: [添加解析记录](https://cloud.tencent.com/document/product/302/8516)
+
+```sh
+source "$(dirname $0)/libfntddns"
+export SecretKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export SecretId=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+curl -fsS $(RecordCreate qcloud.com www A 默认 192.168.0.2)
+```
+

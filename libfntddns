@@ -200,3 +200,32 @@ RecordStatus()
 
   build_final_url
 }
+
+#
+#  添加解析记录 ( RecordCreate )
+#
+#  参数1: domain
+#  参数2: subDomain
+#  参数3: recordType
+#  参数4: recordLine
+#  参数5: value
+#
+#  注意1: 需要 export SecretKey & SecretId 变量
+#
+#  返回v:  最终可以被用于 curl 或者 wget 发送 GET 请求的字符串
+#
+RecordCreate()
+{
+  set_pub_param
+
+  set_param "Action"     "RecordCreate"
+  set_param "domain"     $1
+  set_param "subDomain"  $2
+  set_param "recordType" $3
+  set_param "recordLine" $4
+  set_param "value"      $5
+
+  set_param "Signature" $(calc_signature)
+
+  build_final_url
+}
