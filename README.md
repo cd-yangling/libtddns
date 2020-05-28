@@ -55,3 +55,14 @@ export SecretId=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 curl -fsS $(RecordCreate qcloud.com www A 默认 192.168.0.2)
 ```
 
+### 删除解析记录
+
+参考文档: [删除解析记录](https://cloud.tencent.com/document/product/302/8514)
+
+```sh
+source "$(dirname $0)/libfntddns"
+export SecretKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export SecretId=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+curl -fsS $(RecordDelete qcloud.com id)
+```
+
